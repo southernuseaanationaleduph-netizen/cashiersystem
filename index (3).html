@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CASH MANAGEMENT SYSTEM v1.0</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #e8e8e8;
+    color: #111;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .screen { display: none; width: 100vw; height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ══════════ PHONE SCANNER SCREEN ══════════ */
+  #phone-scanner-screen {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: #111;
+    padding: 0;
+    overflow: hidden;
+  }
+  .ps-header {
+    width: 100%; background: #000; color: #fff;
+    padding: 14px 18px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ps-title { font-size: 13px; font-weight: bold; letter-spacing: 3px; color: #fff; }
+  .ps-sub { font-size: 9px; letter-spacing: 2px; color: #888; margin-top: 2px; }
+  .ps-scanner-wrap {
+    width: 100%; flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #111; gap: 0;
+  }
+  #ps-qr-reader { width: 100% !important; max-width: 420px; overflow: hidden; }
+  #ps-qr-reader video {
+    width: 100% !important;
+    border-radius: 0;
+    transform: scale(0.5);
+    transform-origin: center center;
+  }
+  /* Zoom level control label */
+  #ps-zoom-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; padding: 8px 16px;
+    background: #1a1a1a; width: 100%;
+  }
+  #ps-zoom-row label { color: #888; font-size: 10px; letter-spacing: 2px; }
+  #ps-zoom-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 140px; height: 4px;
+    background: #444; border-radius: 2px; outline: none; cursor: pointer;
+  }
+  #ps-zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; cursor: pointer;
+  }
+  #ps-zoom-val { color: #aaa; font-size: 10px; font-family: 'Courier New', monospace; letter-spacing: 1px; }
+  .ps-status {
+    width: 100%; padding: 14px 20px;
+    text-align: center; font-size: 13px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .ps-status.idle    { color: #888; background: #1a1a1a; }
+  .ps-status.scanning{ color: #aaa; background: #1a1a1a; }
+  .ps-status.success { color: #1a1a1a; background: #00e676; font-weight: bold; }
+  .ps-status.error   { color: #fff; background: #c00; }
+  .ps-account-card {
+    width: 100%; max-width: 420px;
+    background: #222; border-top: 2px solid #333;
+    padding: 16px 20px; display: none;
+  }
+  .ps-account-card.visible { display: block; }
+  .ps-acct-code { font-size: 11px; letter-spacing: 2px; color: #888; margin-bottom: 4px; }
+  .ps-acct-name { font-size: 20px; font-weight: bold; color: #fff; margin-bottom: 6px; }
+  .ps-acct-bal  { font-size: 14px; color: #00e676; letter-spacing: 1px; }
+  .ps-sent-badge {
+    margin-top: 10px; padding: 6px 12px;
+    background: #00c853; color: #000;
+    font-size: 10px; letter-spacing: 2px; font-weight: bold;
+    display: inline-block; border-radius: 2px;
+  }
+  .ps-btn-row {
+    width: 100%; display: flex; gap: 0;
+    border-top: 1px solid #222;
+  }
+  .ps-btn {
+    flex: 1; padding: 16px; border: none; cursor: pointer;
+    font-size: 12px; font-weight: bold; letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .ps-btn-scan { background: #fff; color: #111; }
+  .ps-btn-exit { background: #333; color: #aaa; }
+
+  /* ══════════ LRT FARE SCREEN ══════════ */
+  #lrt-screen { flex-direction: column; flex: 1; display: none; }
+  #lrt-screen.active { display: flex; }
+
+  .lrt-body { display: flex; flex: 1; overflow: hidden; }
+
+  /* Fare summary panel */
+  .lrt-panel {
+    background: #fff; border: 1px solid #d0d0d0;
+    margin: 16px; overflow-y: auto; flex: 1;
+    display: flex; flex-direction: column;
+  }
+  .lrt-panel-header {
+    padding: 13px 22px; border-bottom: 1px solid #e0e0e0;
+    background: #111; color: #fff; flex-shrink: 0;
+  }
+  .lrt-panel-header h3 { font-size: 10px; letter-spacing: 3px; font-weight: bold; }
+  .lrt-panel-body { padding: 26px 24px; flex: 1; }
+
+  /* Fare display */
+  .fare-display {
+    background: #111; color: #fff;
+    padding: 22px 24px; margin-bottom: 22px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .fare-label { font-size: 9px; letter-spacing: 3px; color: #888; }
+  .fare-amount { font-size: 36px; font-weight: bold; letter-spacing: 2px; font-family: 'Courier New', monospace; color: #fff; }
+  .fare-discount-tag {
+    display: inline-block; background: #00e676; color: #111;
+    font-size: 9px; font-weight: bold; letter-spacing: 2px;
+    padding: 3px 8px; margin-top: 4px; width: fit-content;
+  }
+
+  /* Station picker grid */
+  .station-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 20px;
+  }
+  .station-btn {
+    border: 1px solid #ddd; background: #fafafa; color: #333;
+    padding: 10px 12px; text-align: left; cursor: pointer;
+    font-family: Arial; font-size: 11px; letter-spacing: 1px;
+    transition: all 0.1s; line-height: 1.4;
+  }
+  .station-btn:hover { background: #f0f0f0; border-color: #aaa; }
+  .station-btn:focus { outline: 2px solid #111; outline-offset: -2px; background: #f0f0f0; }
+  .station-btn.selected { background: #111; color: #fff; border-color: #111; }
+  .station-btn.selected:focus { outline-color: #aaa; }
+  .station-btn .stn-num { font-size: 9px; color: #999; display: block; margin-bottom: 2px; }
+  .station-btn.selected .stn-num { color: #777; }
+  .station-section-label {
+    font-size: 9px; letter-spacing: 3px; color: #999; font-weight: bold;
+    padding: 10px 0 6px; border-bottom: 1px solid #eee; margin-bottom: 10px;
+  }
+
+  /* Discount selector */
+  .discount-row {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .discount-btn {
+    border: 1px solid #ddd; background: #fafafa; color: #555;
+    padding: 9px 14px; cursor: pointer; font-family: Arial;
+    font-size: 11px; letter-spacing: 1px; transition: all 0.1s;
+    font-weight: bold;
+  }
+  .discount-btn:hover { background: #f0f0f0; border-color: #aaa; }
+  .discount-btn.selected { background: #111; color: #fff; border-color: #111; }
+
+  /* Route arrow display */
+  .lrt-route-display {
+    background: #f6f6f6; border: 1px solid #e0e0e0;
+    padding: 14px 18px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Courier New', monospace; font-size: 12px;
+  }
+  .lrt-route-from, .lrt-route-to { flex: 1; }
+  .lrt-route-label { font-size: 9px; letter-spacing: 2px; color: #999; display: block; margin-bottom: 3px; }
+  .lrt-route-val { font-size: 13px; font-weight: bold; color: #111; }
+  .lrt-route-arrow { color: #ccc; font-size: 18px; }
+
+  #lrt-status-bar {
+    height: 32px; background: #222; border-top: 1px solid #111;
+    display: flex; align-items: center; padding: 0 20px;
+    gap: 12px; flex-shrink: 0;
+  }
+  #lrt-status-msg { font-size: 11px; letter-spacing: 1px; flex: 1; color: #bbb; }
+  #lrt-status-msg.ok  { color: #7d7; }
+  #lrt-status-msg.err { color: #f88; }
+  #pin-screen {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f4f4f4;
+  }
+  .pin-logo-bar { text-align: center; margin-bottom: 32px; }
+  .pin-logo-bar h1 { font-size: 22px; font-weight: bold; letter-spacing: 4px; color: #111; }
+  .pin-logo-bar .pin-sub { font-size: 10px; letter-spacing: 3px; color: #888; margin-top: 5px; }
+  .pin-divider { width: 360px; border: none; border-top: 2px solid #111; margin: 0 auto 28px; }
+  .pin-card {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 36px 44px 30px;
+    width: 340px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .pin-card-title { font-size: 10px; letter-spacing: 3px; color: #888; text-align: center; margin-bottom: 22px; }
+  .pin-dots { display: flex; gap: 18px; justify-content: center; margin-bottom: 28px; }
+  .pin-dot {
+    width: 20px; height: 20px;
+    border: 2px solid #bbb;
+    border-radius: 50%;
+    background: #fff;
+    transition: all 0.12s;
+  }
+  .pin-dot.filled { background: #111; border-color: #111; }
+  .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pin-key {
+    height: 54px;
+    border: 1px solid #ddd;
+    background: #fafafa;
+    color: #111;
+    font-family: Arial;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .pin-key:hover { background: #ececec; border-color: #aaa; }
+  .pin-key:active { background: #ddd; }
+  #pin-status { margin-top: 16px; font-size: 11px; color: #c00; letter-spacing: 1px; min-height: 16px; text-align: center; }
+  #countdown-bar { margin-top: 5px; font-size: 11px; color: #c00; letter-spacing: 1px; min-height: 14px; text-align: center; }
+
+  /* ══════════ MAIN CHROME ══════════ */
+  #main-screen { flex-direction: column; background: #e8e8e8; }
+  .top-bar {
+    background: #111;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 24px;
+    flex-shrink: 0;
+  }
+  .top-bar-brand { font-size: 13px; font-weight: bold; letter-spacing: 3px; }
+  .top-bar-brand span { font-weight: normal; font-size: 11px; color: #aaa; margin-left: 10px; letter-spacing: 1px; }
+  .top-bar-right { font-size: 11px; color: #aaa; display: flex; gap: 14px; align-items: center; }
+  #sys-clock { font-family: 'Courier New', monospace; font-size: 12px; color: #fff; }
+
+  /* ══════════ MENU ══════════ */
+  #menu-screen {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f4f4f4;
+    flex: 1;
+  }
+  .menu-banner { margin-bottom: 32px; text-align: center; }
+  .menu-banner h2 { font-size: 12px; letter-spacing: 4px; color: #666; font-weight: normal; }
+  .menu-banner .menu-sep { width: 180px; border: none; border-top: 1px solid #ccc; margin: 10px auto 0; }
+  .menu-card { background: #fff; border: 1px solid #ccc; width: 380px; box-shadow: 0 1px 6px rgba(0,0,0,0.07); overflow: hidden; }
+  .menu-item {
+    display: flex; align-items: center;
+    padding: 24px 28px;
+    border: none; background: transparent; color: #111;
+    font-family: Arial; font-size: 13px; font-weight: bold;
+    letter-spacing: 2px; cursor: pointer; width: 100%;
+    text-align: left; border-bottom: 1px solid #ebebeb;
+    gap: 18px; transition: background 0.1s;
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: #f8f8f8; }
+  .menu-item.selected { background: #111; color: #fff; outline: none; }
+  .menu-item:focus { outline: none; }
+  .menu-num { font-size: 22px; font-weight: bold; color: #ccc; width: 28px; flex-shrink: 0; }
+  .menu-item.selected .menu-num { color: #555; }
+  .menu-arrow { margin-left: auto; font-size: 16px; color: #ccc; }
+  .menu-item.selected .menu-arrow { color: #555; }
+  .menu-hint { margin-top: 18px; font-size: 10px; color: #aaa; letter-spacing: 2px; text-align: center; }
+
+  /* ══════════ FORM SCREEN ══════════ */
+  #form-screen { flex-direction: column; flex: 1; }
+  .form-subheader {
+    background: #fff; border-bottom: 1px solid #ddd;
+    padding: 10px 22px; display: flex; align-items: center;
+    gap: 10px; flex-shrink: 0;
+  }
+  .crumb-back { font-size: 11px; color: #888; letter-spacing: 1px; cursor: pointer; }
+  .crumb-back:hover { color: #111; }
+  .crumb-sep { color: #ccc; }
+  .crumb-current { font-size: 11px; font-weight: bold; letter-spacing: 2px; color: #111; }
+
+  .form-body { display: flex; flex: 1; overflow: hidden; }
+
+  .form-col {
+    background: #fff;
+    border: 1px solid #d0d0d0;
+    margin: 16px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .form-col-header {
+    padding: 13px 22px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #111;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .form-col-header h3 { font-size: 10px; letter-spacing: 3px; font-weight: bold; }
+  .form-col-body { padding: 26px 24px; flex: 1; }
+
+  /* Fields */
+  .field-group { margin-bottom: 22px; }
+  .field-label { font-size: 10px; letter-spacing: 2px; color: #777; display: block; margin-bottom: 5px; }
+  .field-input {
+    width: 100%; background: #fafafa;
+    border: 1px solid #ccc; border-top: 2px solid #999;
+    color: #111; font-family: 'Courier New', monospace;
+    font-size: 14px; padding: 10px 12px; outline: none;
+    transition: border-color 0.12s, background 0.12s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field-input:focus { border-color: #111; border-top-color: #111; background: #fff; }
+  select.field-input {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%23555'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+  select.field-input option { background: #fff; color: #111; }
+
+  .display-field {
+    width: 100%; background: #f6f6f6;
+    border: 1px solid #e0e0e0; border-left: 3px solid #bbb;
+    padding: 10px 12px;
+    font-family: 'Courier New', monospace; font-size: 14px;
+    color: #444; min-height: 42px; display: flex; align-items: center;
+  }
+  .display-field.pos { border-left-color: #2a7a2a; color: #2a7a2a; font-weight: bold; font-size: 15px; }
+  .display-field.neg { border-left-color: #c00; color: #c00; font-weight: bold; }
+
+  /* QR Panel */
+  .qr-panel { border: 1px solid #e0e0e0; background: #fafafa; margin-bottom: 24px; }
+  .qr-panel-header {
+    background: #f0f0f0; border-bottom: 1px solid #e0e0e0;
+    padding: 9px 14px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .qr-panel-title { font-size: 10px; letter-spacing: 2px; color: #555; font-weight: bold; }
+  .qr-shortcut { font-size: 10px; background: #111; color: #fff; padding: 2px 8px; letter-spacing: 1px; }
+  .qr-panel-body { padding: 16px; }
+  #qr-reader { width: 100%; }
+  #qr-reader video { width: 100% !important; border: 1px solid #ccc; }
+  /* Suppress html5-qrcode default UI */
+  #qr-reader__header_message,
+  #qr-reader__status_span,
+  #qr-reader__camera_selection,
+  #qr-reader__dashboard { display: none !important; }
+  #qr-status {
+    font-size: 11px; color: #777; letter-spacing: 1px;
+    margin-top: 10px; padding: 8px 10px;
+    background: #fff; border: 1px solid #e8e8e8;
+    border-left: 3px solid #bbb;
+  }
+  #qr-status.scanning { border-left-color: #2a7a2a; color: #2a7a2a; }
+  #qr-status.success  { border-left-color: #2a7a2a; color: #2a7a2a; font-weight: bold; }
+  #qr-status.error    { border-left-color: #c00; color: #c00; }
+  .https-note { font-size: 10px; color: #bbb; letter-spacing: 1px; margin-top: 7px; }
+  .qr-btn-row { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* Buttons */
+  .btn {
+    border: 1px solid #111; background: #111; color: #fff;
+    font-family: Arial; font-size: 11px; font-weight: bold;
+    letter-spacing: 2px; cursor: pointer; padding: 9px 20px;
+    transition: background 0.1s;
+  }
+  .btn:hover, .btn:focus { background: #333; outline: none; }
+  .btn-outline {
+    background: #fff; color: #555; border: 1px solid #ccc;
+  }
+  .btn-outline:hover, .btn-outline:focus { background: #f4f4f4; border-color: #888; color: #111; outline: none; }
+
+  .form-actions {
+    padding: 16px 24px; border-top: 1px solid #e8e8e8;
+    background: #fafafa; display: flex; gap: 10px;
+    justify-content: flex-end; flex-shrink: 0;
+  }
+  .btn-primary {
+    background: #111; color: #fff; border: none;
+    font-family: Arial; font-size: 12px; font-weight: bold;
+    letter-spacing: 2px; cursor: pointer; padding: 12px 28px;
+  }
+  .btn-primary:hover { background: #333; }
+  .btn-secondary {
+    background: #fff; color: #555; border: 1px solid #ccc;
+    font-family: Arial; font-size: 12px; letter-spacing: 1px;
+    cursor: pointer; padding: 12px 20px;
+  }
+  .btn-secondary:hover { background: #f2f2f2; color: #111; border-color: #999; }
+
+  /* ══════════ STATUS BAR ══════════ */
+  #status-bar {
+    height: 32px; background: #222; border-top: 1px solid #111;
+    display: flex; align-items: center; padding: 0 20px;
+    gap: 12px; flex-shrink: 0;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0; }
+  .status-dot.ok { background: #4a4; }
+  .status-dot.err { background: #c44; }
+  .status-dot.info { background: #888; }
+  #status-msg { font-size: 11px; letter-spacing: 1px; flex: 1; color: #bbb; }
+  #status-msg.ok { color: #7d7; }
+  #status-msg.err { color: #f88; }
+  .kb-hint { font-size: 10px; color: #444; letter-spacing: 1px; white-space: nowrap; }
+
+  /* ══════════ MODAL ══════════ */
+  #modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.50); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  #modal-overlay.active { display: flex; }
+  .modal-box {
+    background: #fff; border: 1px solid #bbb; border-top: 4px solid #111;
+    min-width: 480px; max-width: 580px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18); overflow: hidden;
+  }
+  .modal-header { padding: 18px 24px; background: #111; color: #fff; }
+  .modal-header h3 { font-size: 11px; letter-spacing: 3px; font-weight: bold; }
+  .modal-body { padding: 22px 24px; }
+  .modal-summary { border: 1px solid #e8e8e8; background: #fafafa; overflow: hidden; }
+  .modal-section-label {
+    padding: 6px 14px; background: #f0f0f0; border-bottom: 1px solid #e8e8e8;
+    font-size: 9px; letter-spacing: 2px; color: #999;
+  }
+  .modal-row {
+    display: flex; justify-content: space-between;
+    padding: 9px 14px; border-bottom: 1px solid #efefef;
+    font-family: 'Courier New', monospace; font-size: 12px;
+  }
+  .modal-row:last-child { border-bottom: none; }
+  .modal-row .ml { color: #888; font-size: 10px; letter-spacing: 1px; align-self: center; }
+  .modal-row .mr { color: #111; font-weight: bold; text-align: right; }
+  .modal-row.hl { background: #f8f8f8; }
+  .modal-row.hl .mr { font-size: 15px; }
+  .modal-footer {
+    padding: 16px 24px; background: #fafafa;
+    border-top: 1px solid #e8e8e8; display: flex;
+    gap: 10px; justify-content: flex-end;
+  }
+
+  /* ══════════ RECEIPT ══════════ */
+  #receipt-overlay {
+    display: none; position: fixed; inset: 0;
+    background: #e8e8e8; z-index: 200;
+    overflow-y: auto; flex-direction: column;
+    align-items: center; padding: 32px 20px;
+  }
+  #receipt-overlay.active { display: flex; }
+  .receipt-wrapper {
+    background: #fff; border: 1px solid #ccc;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12); width: 400px;
+  }
+  .receipt-topbar {
+    background: #111; color: #fff;
+    padding: 12px 20px; font-size: 10px;
+    letter-spacing: 3px; text-align: center;
+  }
+  .receipt-paper {
+    padding: 28px 28px 22px;
+    font-family: 'Courier New', monospace; font-size: 12px; color: #111;
+  }
+  .receipt-logo { text-align: center; margin-bottom: 16px; }
+  .receipt-logo-title { font-size: 15px; font-weight: bold; letter-spacing: 3px; }
+  .receipt-logo-sub { font-size: 9px; color: #888; letter-spacing: 2px; margin-top: 3px; }
+  .receipt-sep { border: none; border-top: 1px dashed #bbb; margin: 12px 0; }
+  .receipt-sep-solid { border: none; border-top: 1px solid #888; margin: 12px 0; }
+  .receipt-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; gap: 8px; }
+  .receipt-row .rl { color: #888; flex-shrink: 0; }
+  .receipt-row .rr { color: #111; font-weight: bold; text-align: right; }
+  .receipt-amount-block {
+    background: #f6f6f6; border: 1px solid #e0e0e0;
+    padding: 12px 14px; margin: 12px 0;
+  }
+  .receipt-amt-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+  .receipt-amt-row.total {
+    border-top: 1px solid #ccc; padding-top: 8px; margin-top: 6px;
+    font-size: 14px; font-weight: bold; color: #111;
+  }
+  .receipt-footer-text { text-align: center; font-size: 10px; color: #999; margin-top: 10px; letter-spacing: 1px; }
+  .receipt-actions {
+    padding: 16px 20px; border-top: 1px solid #e8e8e8;
+    background: #fafafa; display: flex; gap: 10px; justify-content: center;
+  }
+
+  /* ══════════ KB REF PANEL ══════════ */
+  #kb-toggle {
+    position: fixed; bottom: 48px; right: 0;
+    background: #111; color: #fff;
+    border: none; cursor: pointer;
+    font-family: Arial; font-size: 9px; font-weight: bold;
+    letter-spacing: 2px; padding: 7px 10px;
+    writing-mode: vertical-rl; text-orientation: mixed;
+    z-index: 60; border-radius: 4px 0 0 4px;
+    transition: background 0.15s;
+  }
+  #kb-toggle:hover { background: #333; }
+  #kb-ref {
+    position: fixed; top: 0; right: -230px; bottom: 0;
+    width: 220px; background: #1a1a1a;
+    border-left: 1px solid #333;
+    display: flex; flex-direction: column;
+    z-index: 55; transition: right 0.22s cubic-bezier(.4,0,.2,1);
+    overflow: hidden;
+  }
+  #kb-ref.open { right: 0; }
+  #kb-ref-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: #111; border-bottom: 1px solid #333; flex-shrink: 0;
+  }
+  #kb-ref-header h4 { font-size: 9px; letter-spacing: 3px; color: #888; margin: 0; }
+  #kb-ref-close {
+    background: none; border: 1px solid #444; color: #888;
+    cursor: pointer; font-size: 11px; line-height: 1;
+    padding: 2px 7px; border-radius: 2px; font-family: Arial;
+  }
+  #kb-ref-close:hover { background: #333; color: #fff; border-color: #666; }
+  #kb-ref-body { padding: 14px; overflow-y: auto; flex: 1; }
+  .kb-section { font-size: 8px; letter-spacing: 2px; color: #555; margin: 12px 0 6px; font-weight: bold; }
+  .kb-section:first-child { margin-top: 0; }
+  .kb-row { margin-bottom: 6px; display: flex; align-items: center; gap: 6px; color: #999; font-size: 10px; }
+  .kk {
+    display: inline-block; background: #2a2a2a; border: 1px solid #444;
+    padding: 2px 6px; font-size: 9px; color: #ccc;
+    font-family: 'Courier New', monospace; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ══════════ PRINT ══════════ */
+  @media print {
+    body * { visibility: hidden; }
+    #receipt-overlay, #receipt-overlay * { visibility: visible; }
+    #receipt-overlay { position: fixed; inset: 0; padding: 0; background: #fff; display: flex; align-items: flex-start; justify-content: center; }
+    .receipt-wrapper { border: none; box-shadow: none; width: 100%; max-width: 380px; }
+    .receipt-actions { display: none; }
+    .receipt-topbar { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #kb-ref { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     PIN SCREEN
+══════════════════════════════════════════ -->
+<div id="pin-screen" class="screen active">
+  <div class="pin-logo-bar">
+    <h1>CASH MANAGEMENT SYSTEM</h1>
+    <div class="pin-sub">Cashier Terminal &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; Authorized Access Only</div>
+  </div>
+  <hr class="pin-divider">
+  <div class="pin-card">
+    <div class="pin-card-title">ENTER PIN TO CONTINUE</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-keypad">
+      <button class="pin-key" data-k="1">1</button>
+      <button class="pin-key" data-k="2">2</button>
+      <button class="pin-key" data-k="3">3</button>
+      <button class="pin-key" data-k="4">4</button>
+      <button class="pin-key" data-k="5">5</button>
+      <button class="pin-key" data-k="6">6</button>
+      <button class="pin-key" data-k="7">7</button>
+      <button class="pin-key" data-k="8">8</button>
+      <button class="pin-key" data-k="9">9</button>
+      <button class="pin-key" data-k="back" style="font-size:15px;color:#999;">⌫</button>
+      <button class="pin-key" data-k="0">0</button>
+      <button class="pin-key" data-k="enter" style="font-size:15px;background:#111;color:#fff;border-color:#111;">↵</button>
+    </div>
+    <div id="pin-status"></div>
+    <div id="countdown-bar"></div>
+  </div>
+  <div style="margin-top:18px;">
+    <button id="btn-open-phone-scanner" onclick="openPhoneScanner()" style="
+      background:none; border:1px solid #ccc; color:#888;
+      padding:8px 20px; font-size:10px; letter-spacing:2px;
+      cursor:pointer; border-radius:2px;">
+      📱 OPEN PHONE SCANNER
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN SCREEN
+══════════════════════════════════════════ -->
+<div id="main-screen" class="screen">
+  <div class="top-bar">
+    <div class="top-bar-brand">CASH MANAGEMENT SYSTEM <span>| Cashier Terminal</span></div>
+    <div class="top-bar-right">
+      <span id="sys-clock"></span>
+      <span>·</span>
+      <span>CASHIER</span>
+    </div>
+  </div>
+
+  <!-- MENU -->
+  <div id="menu-screen" class="screen active" style="flex:1;">
+    <div class="menu-banner">
+      <h2>SELECT TRANSACTION TYPE</h2>
+      <hr class="menu-sep">
+    </div>
+    <div class="menu-card">
+      <button class="menu-item selected" id="menu-ci">
+        <span class="menu-num">1</span>
+        <span style="flex:1;">CASH IN</span>
+        <span class="menu-arrow">›</span>
+      </button>
+      <button class="menu-item" id="menu-co">
+        <span class="menu-num">2</span>
+        <span style="flex:1;">CASH OUT</span>
+        <span class="menu-arrow">›</span>
+      </button>
+      <button class="menu-item" id="menu-lrt">
+        <span class="menu-num">3</span>
+        <span style="flex:1;">LRT-1 TRAIN FARE</span>
+        <span class="menu-arrow">›</span>
+      </button>
+    </div>
+    <div class="menu-hint">↑ ↓ &nbsp; Navigate &nbsp;·&nbsp; Enter &nbsp; Select &nbsp;·&nbsp; 1 / 2 / 3 &nbsp; Shortcut</div>
+  </div>
+
+  <!-- FORM -->
+  <div id="form-screen" class="screen" style="flex:1;flex-direction:column;">
+    <div class="form-subheader">
+      <span class="crumb-back" id="btn-crumb-back">← Main Menu</span>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-current" id="crumb-title">CASH IN</span>
+    </div>
+
+    <div class="form-body">
+      <!-- LEFT: Transaction Details -->
+      <div class="form-col">
+        <div class="form-col-header">
+          <h3 id="form-col-title">CASH IN — TRANSACTION DETAILS</h3>
+        </div>
+        <div class="form-col-body">
+          <div class="field-group">
+            <label class="field-label" for="f-ref">Account Reference Number</label>
+            <input class="field-input" id="f-ref" type="text" maxlength="30" autocomplete="off" spellcheck="false" tabindex="1">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="f-amount">Amount (₱)</label>
+            <input class="field-input" id="f-amount" type="text" maxlength="20" autocomplete="off" placeholder="0.00" spellcheck="false" tabindex="2">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="f-phone">Phone Number</label>
+            <input class="field-input" id="f-phone" type="text" maxlength="13" autocomplete="off" placeholder="09XX-XXX-XXXX" tabindex="3">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="f-method">Payment Method</label>
+            <select class="field-input" id="f-method" tabindex="4">
+              <option value="CASH">Cash</option>
+              <option value="GCASH">GCash</option>
+              <option value="MAYA">Maya</option>
+              <option value="BANK TRANSFER">Bank Transfer</option>
+              <option value="CHECK">Check</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="f-access">Access Code</label>
+            <input class="field-input" id="f-access" type="password" maxlength="20" autocomplete="off" tabindex="5">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" id="btn-back-menu">← Back</button>
+          <button class="btn-primary" id="btn-confirm" tabindex="7">Confirm Transaction ↵</button>
+        </div>
+      </div>
+
+      <!-- RIGHT: QR + Account Info -->
+      <div class="form-col">
+        <div class="form-col-header">
+          <h3>QR SCAN — BALANCE REIMBURSEMENT PROCESS</h3>
+        </div>
+        <div class="form-col-body">
+          <div class="qr-panel">
+            <div class="qr-panel-header">
+              <span class="qr-panel-title">Scan Account QR Code</span>
+              <span id="mqtt-dot" title="Phone sync status" style="font-size:9px;letter-spacing:1px;color:#bbb;padding:2px 6px;border:1px solid #ddd;border-radius:2px;">📡 CONNECTING...</span>
+              <span class="qr-shortcut">S</span>
+            </div>
+            <div class="qr-panel-body">
+              <div id="qr-reader"></div>
+              <div id="qr-status">Ready — press [S] or click Scan to open camera</div>
+              <div class="https-note">⚠ Camera requires HTTPS — works correctly on GitHub Pages</div>
+              <div class="qr-btn-row">
+                <button class="btn" id="btn-scan" style="flex:1;">[S] Scan QR Code</button>
+                <button class="btn btn-outline" id="btn-stop-scan" style="display:none;">■ Stop</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Account Code</label>
+            <input class="field-input" id="f-code" type="text" disabled placeholder="—" autocomplete="off" spellcheck="false" tabindex="-1" style="background:#f6f6f6;border-left:3px solid #bbb;color:#444;">
+          </div>
+          <!-- f-name hidden, kept in DOM for payload compatibility -->
+          <input type="hidden" id="f-name" value="">
+          <div class="field-group">
+            <label class="field-label">Current Balance <span style="color:#bbb;font-size:9px;letter-spacing:1px;" id="bal-edit-hint"></span></label>
+            <input class="field-input" id="f-balance" type="text" disabled placeholder="₱ —" autocomplete="off" spellcheck="false" tabindex="6" style="background:#f6f6f6;border-left:3px solid #bbb;color:#444;font-weight:bold;">
+          </div>
+          <div class="field-group">
+            <label class="field-label" id="new-balance-label">New Balance After Cash In</label>
+            <input class="field-input" id="f-newbalance" type="text" disabled placeholder="₱ —" tabindex="-1" style="background:#f6f6f6;border-left:3px solid #2a7a2a;color:#2a7a2a;font-weight:bold;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status-bar">
+      <div class="status-dot info" id="status-dot"></div>
+      <div id="status-msg">Ready</div>
+      <div class="kb-hint">Enter = Next &nbsp;·&nbsp; S = Scan QR &nbsp;·&nbsp; Enter = Confirm &nbsp;·&nbsp; Esc = Back</div>
+    </div>
+  </div>
+  <!-- LRT FARE -->
+  <div id="lrt-screen" class="screen" style="flex:1;flex-direction:column;">
+    <div class="form-subheader">
+      <span class="crumb-back" id="btn-lrt-back">← Main Menu</span>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-current">LRT-1 TRAIN FARE</span>
+    </div>
+
+    <div class="lrt-body">
+      <!-- LEFT: QR Scan + Account -->
+      <div class="lrt-panel" style="max-width:380px;">
+        <div class="lrt-panel-header"><h3>QR SCAN — ACCOUNT</h3></div>
+        <div class="lrt-panel-body">
+          <div class="qr-panel">
+            <div class="qr-panel-header">
+              <span class="qr-panel-title">Scan Beep Card / Account QR</span>
+              <span class="qr-shortcut">S</span>
+            </div>
+            <div class="qr-panel-body">
+              <div id="lrt-qr-reader"></div>
+              <div id="lrt-qr-status">Ready — press [S] or click Scan</div>
+              <div class="https-note">⚠ Camera requires HTTPS</div>
+              <div class="qr-btn-row">
+                <button class="btn" id="lrt-btn-scan" style="flex:1;">[S] Scan QR</button>
+                <button class="btn btn-outline" id="lrt-btn-stop" style="display:none;">■ Stop</button>
+              </div>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Account Code</label>
+            <input class="field-input" id="lrt-f-code" type="text" disabled placeholder="—" autocomplete="off" style="background:#f6f6f6;border-left:3px solid #bbb;color:#444;">
+          </div>
+          <input type="hidden" id="lrt-f-name" value="">
+          <div class="field-group">
+            <label class="field-label">Account Name</label>
+            <input class="field-input" id="lrt-f-acctname" type="text" disabled placeholder="—" autocomplete="off" style="background:#f6f6f6;border-left:3px solid #bbb;color:#444;font-weight:bold;">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Current Balance</label>
+            <input class="field-input" id="lrt-f-balance" type="text" disabled placeholder="₱ —" style="background:#f6f6f6;border-left:3px solid #2a7a2a;color:#2a7a2a;font-weight:bold;">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Access Code</label>
+            <input class="field-input" id="lrt-f-access" type="password" maxlength="20" autocomplete="off" tabindex="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Station + Fare -->
+      <div class="lrt-panel">
+        <div class="lrt-panel-header"><h3>STATION &amp; FARE DETAILS</h3></div>
+        <div class="lrt-panel-body">
+
+          <!-- Fare Display -->
+          <div class="fare-display" id="lrt-fare-display">
+            <span class="fare-label">FARE AMOUNT</span>
+            <span class="fare-amount" id="lrt-fare-val">₱ —</span>
+            <span class="fare-discount-tag" id="lrt-discount-tag" style="display:none;"></span>
+          </div>
+
+          <!-- Route Display -->
+          <div class="lrt-route-display" id="lrt-route-display">
+            <div class="lrt-route-from">
+              <span class="lrt-route-label">FROM</span>
+              <span class="lrt-route-val" id="lrt-from-val">—</span>
+            </div>
+            <span class="lrt-route-arrow">→</span>
+            <div class="lrt-route-to">
+              <span class="lrt-route-label">TO</span>
+              <span class="lrt-route-val" id="lrt-to-val">—</span>
+            </div>
+          </div>
+
+          <!-- Discount -->
+          <div class="field-group">
+            <label class="field-label">Discount Type</label>
+            <div class="discount-row" id="lrt-discount-row">
+              <button class="discount-btn selected" data-disc="REGULAR" data-pct="0" onclick="selectDiscount(this)">Regular</button>
+              <button class="discount-btn" data-disc="STUDENT" data-pct="20" onclick="selectDiscount(this)">Student (20%)</button>
+              <button class="discount-btn" data-disc="PWD" data-pct="20" onclick="selectDiscount(this)">PWD (20%)</button>
+              <button class="discount-btn" data-disc="SENIOR" data-pct="20" onclick="selectDiscount(this)">Senior (20%)</button>
+            </div>
+          </div>
+
+          <!-- Origin Station — LOCKED to EDSA -->
+          <div class="field-group">
+            <label class="field-label">Origin Station (FROM) <span style="color:#2a7a2a;font-size:9px;letter-spacing:1px;">● FIXED</span></label>
+            <div style="background:#111;color:#fff;padding:10px 14px;font-family:'Courier New',monospace;font-size:13px;font-weight:bold;letter-spacing:2px;border-left:3px solid #2a7a2a;">
+              <span style="font-size:9px;color:#777;display:block;margin-bottom:2px;letter-spacing:2px;">EDG</span>
+              EDSA
+            </div>
+          </div>
+
+          <!-- Destination Station — NORTHBOUND ONLY -->
+          <div class="field-group">
+            <label class="field-label">Destination Station (TO)</label>
+            <div id="lrt-to-grid">
+              <div class="station-grid" id="lrt-to-north"></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" id="btn-lrt-back2">← Back</button>
+          <button class="btn-primary" id="btn-lrt-confirm" tabindex="2">Confirm &amp; Deduct ↵</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="lrt-status-bar">
+      <div class="status-dot info" id="lrt-status-dot"></div>
+      <div id="lrt-status-msg">Select origin and destination station</div>
+      <div class="kb-hint">S = Scan QR &nbsp;·&nbsp; Tab/↑↓ = Navigate stations &nbsp;·&nbsp; Space = Select &nbsp;·&nbsp; Enter = Confirm &nbsp;·&nbsp; Esc = Back</div>
+    </div>
+  </div>
+</div>
+<div id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="modal-title">CONFIRM TRANSACTION</h3></div>
+    <div class="modal-body"><div class="modal-summary" id="modal-body"></div></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="modal-cancel">Cancel &nbsp;[Esc]</button>
+      <button class="btn-primary" id="modal-confirm">Confirm &nbsp;[Enter]</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PHONE SCANNER SCREEN
+══════════════════════════════════════════ -->
+<div class="screen" id="phone-scanner-screen">
+  <div class="ps-header">
+    <div>
+      <div class="ps-title">QR SCANNER</div>
+      <div class="ps-sub">CASH MANAGEMENT SYSTEM</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="ps-btn ps-btn-scan" id="ps-btn-flip" onclick="flipCamera()" style="padding:8px 14px;font-size:10px;letter-spacing:1px;">🔄 Front</button>
+      <button class="ps-btn ps-btn-exit" id="ps-btn-exit" style="padding:8px 14px;font-size:10px;">EXIT</button>
+    </div>
+  </div>
+  <div class="ps-scanner-wrap">
+    <div id="ps-qr-reader"></div>
+    <div id="ps-zoom-row">
+      <label>RES</label>
+      <input type="range" id="ps-zoom-slider" min="0" max="3" value="0" step="1">
+      <span id="ps-zoom-val">320×240 (widest)</span>
+    </div>
+    <div class="ps-status idle" id="ps-status">Point camera at account QR code</div>
+    <div class="ps-account-card" id="ps-account-card">
+      <div class="ps-acct-code" id="ps-acct-code"></div>
+      <div class="ps-acct-name" id="ps-acct-name"></div>
+      <div class="ps-acct-bal" id="ps-acct-bal"></div>
+      <div class="ps-sent-badge" id="ps-sent-badge" style="display:none;">✓ SENT TO DESKTOP</div>
+    </div>
+  </div>
+  <div class="ps-btn-row" style="display:none;">
+    <button class="ps-btn ps-btn-scan" id="ps-btn-scan-again">📷 Scan Again</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     RECEIPT
+══════════════════════════════════════════ -->
+<div id="receipt-overlay">
+  <div class="receipt-wrapper">
+    <div class="receipt-topbar">OFFICIAL RECEIPT — CASH MANAGEMENT SYSTEM</div>
+    <div class="receipt-paper" id="receipt-paper"></div>
+    <div class="receipt-actions">
+      <button class="btn-secondary" id="btn-close-receipt">Close &nbsp;[Esc]</button>
+      <button class="btn-primary" id="btn-print-receipt">🖨 Print &nbsp;[P]</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     KEYBOARD REFERENCE
+══════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     KEYBOARD REFERENCE PANEL
+══════════════════════════════════════════ -->
+<button id="kb-toggle" onclick="toggleKbRef()" title="Keyboard Shortcuts">KB</button>
+<div id="kb-ref">
+  <div id="kb-ref-header">
+    <h4>KEYBOARD SHORTCUTS</h4>
+    <button id="kb-ref-close" onclick="toggleKbRef()">✕</button>
+  </div>
+  <div id="kb-ref-body">
+    <div class="kb-section">PIN SCREEN</div>
+    <div class="kb-row"><span class="kk">0–9</span> PIN digit</div>
+    <div class="kb-row"><span class="kk">⌫</span> Delete digit</div>
+    <div class="kb-row"><span class="kk">Enter</span> Submit</div>
+
+    <div class="kb-section">MENU</div>
+    <div class="kb-row"><span class="kk">↑ ↓</span> Navigate</div>
+    <div class="kb-row"><span class="kk">Enter</span> Select</div>
+    <div class="kb-row"><span class="kk">1</span> Cash In</div>
+    <div class="kb-row"><span class="kk">2</span> Cash Out</div>
+    <div class="kb-row"><span class="kk">3</span> LRT-1 Fare</div>
+    <div class="kb-row"><span class="kk">P</span> Phone Scanner</div>
+
+    <div class="kb-section">CASH IN / CASH OUT</div>
+    <div class="kb-row"><span class="kk">Tab</span> Next field</div>
+    <div class="kb-row"><span class="kk">S</span> Open QR Scanner</div>
+    <div class="kb-row"><span class="kk">Enter</span> Confirm</div>
+    <div class="kb-row"><span class="kk">Esc</span> Back to menu</div>
+
+    <div class="kb-section">LRT-1 FARE</div>
+    <div class="kb-row"><span class="kk">S</span> Scan QR</div>
+    <div class="kb-row"><span class="kk">1–9</span> Station 1–9</div>
+    <div class="kb-row"><span class="kk">0</span> Station 10</div>
+    <div class="kb-row"><span class="kk">Q</span> Station 11</div>
+    <div class="kb-row"><span class="kk">-</span> Station 12</div>
+    <div class="kb-row"><span class="kk">R</span> Regular fare</div>
+    <div class="kb-row"><span class="kk">T</span> Student 20%</div>
+    <div class="kb-row"><span class="kk">P</span> PWD 20%</div>
+    <div class="kb-row"><span class="kk">N</span> Senior 20%</div>
+    <div class="kb-row"><span class="kk">Enter</span> Confirm &amp; deduct</div>
+    <div class="kb-row"><span class="kk">Esc</span> Back to menu</div>
+
+    <div class="kb-section">MODAL / CONFIRM</div>
+    <div class="kb-row"><span class="kk">Enter</span> Confirm</div>
+    <div class="kb-row"><span class="kk">Esc</span> Cancel</div>
+
+    <div class="kb-section">RECEIPT</div>
+    <div class="kb-row"><span class="kk">P</span> Print</div>
+    <div class="kb-row"><span class="kk">Esc</span> Close</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+<script>
+// ════════════════════════════════════════════════════
+//  ⚠ REPLACE WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
+// ════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_I9I5M-Xz2vQMqXHzL5U25URyKKiWVVgLtaVUAQ_59FSDtGzDN2j278sRnh3tyrtLCA/exec";
+
+// ── MQTT REAL-TIME CONFIG ────────────────────────────────────────────────
+// Uses FREE public HiveMQ broker — no signup, no key, works instantly
+// Phone publishes scanned QR → desktop receives in <200ms
+const MQTT_BROKER  = "wss://broker.hivemq.com:8884/mqtt";
+const MQTT_TOPIC   = "cms-cashier/qr-scan-v1";
+let mqttClient = null;
+
+function initMQTT(onMessage) {
+  if (mqttClient) {
+    // Already connected — just update the message handler
+    if (onMessage) {
+      mqttClient.subscribe(MQTT_TOPIC, { qos: 1 });
+      mqttClient.removeAllListeners("message");
+      mqttClient.on("message", (topic, payload) => {
+        if (topic !== MQTT_TOPIC) return;
+        try { const msg = JSON.parse(payload.toString()); if (msg.qrValue) onMessage(msg.qrValue); } catch(e){}
+      });
+    }
+    return;
+  }
+  if (typeof mqtt === "undefined") {
+    console.warn("MQTT library not loaded yet — retrying in 1s");
+    setTimeout(() => initMQTT(onMessage), 1000);
+    return;
+  }
+  try {
+    mqttClient = mqtt.connect(MQTT_BROKER, {
+      clientId: "cms-" + Math.random().toString(36).slice(2,8),
+      reconnectPeriod: 3000,
+      connectTimeout: 10000,
+      clean: true
+    });
+    mqttClient.on("connect", () => {
+      console.log("✅ MQTT connected to HiveMQ");
+      if (onMessage) {
+        mqttClient.subscribe(MQTT_TOPIC, { qos: 1 });
+      }
+    });
+    mqttClient.on("message", (topic, payload) => {
+      if (topic !== MQTT_TOPIC || !onMessage) return;
+      try {
+        const msg = JSON.parse(payload.toString());
+        if (msg.qrValue) onMessage(msg.qrValue);
+      } catch(e) {}
+    });
+    mqttClient.on("error", (e) => console.warn("MQTT error:", e.message));
+    mqttClient.on("offline", () => console.warn("MQTT offline — reconnecting..."));
+  } catch(e) {
+    console.warn("MQTT init failed:", e);
+    mqttClient = null;
+  }
+}
+
+// Desktop: connect and listen for QR scans from phone
+function startAblySubscriber() {
+  initMQTT((qrValue) => {
+    const mainActive = document.getElementById("main-screen").classList.contains("active");
+    if (!mainActive) return;
+    beep();
+    const lrtActive  = document.getElementById("lrt-screen").classList.contains("active");
+    const formActive = document.getElementById("form-screen").classList.contains("active");
+    if (lrtActive) {
+      // Route to LRT account fetch
+      onLrtQRDetected(qrValue);
+      setLrtStatus("📱 QR received from phone: " + qrValue, "ok");
+    } else {
+      // Route to Cash In / Cash Out form
+      if (!formActive) openForm("CASH IN");
+      fetchAccount(qrValue);
+      setStatus("📱 QR received from phone: " + qrValue, "ok");
+    }
+  });
+  // Poll MQTT connection status and update indicator
+  const dotEl = document.getElementById("mqtt-dot");
+  const checkConn = setInterval(() => {
+    if (!dotEl) return;
+    if (mqttClient && mqttClient.connected) {
+      dotEl.textContent = "📡 PHONE READY";
+      dotEl.style.color = "#2a7a2a";
+      dotEl.style.borderColor = "#2a7a2a";
+      clearInterval(checkConn);
+    } else {
+      dotEl.textContent = "📡 CONNECTING...";
+      dotEl.style.color = "#bbb";
+    }
+  }, 500);
+}
+
+// Phone: publish scanned QR — received by desktop in <200ms
+async function publishQRScan(qrValue) {
+  const payload = JSON.stringify({ qrValue, ts: Date.now() });
+  // Try up to 5 times waiting for connection
+  for (let i = 0; i < 5; i++) {
+    if (mqttClient && mqttClient.connected) {
+      return new Promise((resolve) => {
+        mqttClient.publish(MQTT_TOPIC, payload, { qos: 1 }, () => {
+          console.log("✅ QR published via MQTT:", qrValue);
+          resolve();
+        });
+      });
+    }
+    await new Promise(r => setTimeout(r, 600)); // wait 600ms then retry
+  }
+  console.warn("MQTT not connected after retries — scan may not reach desktop");
+}
+
+// ── STATE ──────────────────────────────────────────
+const CORRECT_PIN = "2580";
+let pinBuffer = "", pinAttempts = 0, pinLocked = false, lockTimer = null;
+let currentMode = "CASH IN", menuIndex = 0;
+let accountData = null, qrScanner = null, isScanning = false;
+let txInProgress = false, pendingTxData = null;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// ── CLOCK ─────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, "0"); }
+function formatTimestamp(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function fmtCurrency(n) {
+  return "₱ " + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function getAmountValue() {
+  return parseFloat(document.getElementById("f-amount").value.replace(/,/g, "")) || 0;
+}
+setInterval(() => { document.getElementById("sys-clock").textContent = formatTimestamp(new Date()); }, 1000);
+document.getElementById("sys-clock").textContent = formatTimestamp(new Date());
+
+// ── BEEP ──────────────────────────────────────────
+// Double-beep on QR detect. Requires prior user gesture (click/keypress).
+function beep() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") ctx.resume();
+    function tone(freq, startAt, dur, vol) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "sine"; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime + startAt);
+      g.gain.linearRampToValueAtTime(vol, ctx.currentTime + startAt + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + dur);
+      o.start(ctx.currentTime + startAt);
+      o.stop(ctx.currentTime + startAt + dur + 0.02);
+    }
+    tone(1200, 0,    0.13, 0.32);
+    tone(1600, 0.16, 0.13, 0.32);
+  } catch(e) {}
+}
+
+// Prime AudioContext on any user interaction
+["keydown","click","touchstart"].forEach(evt =>
+  document.addEventListener(evt, () => { try { getAudioCtx(); } catch(e){} }, { once: true })
+);
+
+// ── Keyboard shortcut panel toggle ───────────────────────────────
+function toggleKbRef() {
+  document.getElementById("kb-ref").classList.toggle("open");
+}
+// Close on Escape if open
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.getElementById("kb-ref").classList.contains("open")) {
+    document.getElementById("kb-ref").classList.remove("open");
+  }
+});
+function updatePinDots() {
+  for (let i = 0; i < 4; i++)
+    document.getElementById("d"+i).classList.toggle("filled", i < pinBuffer.length);
+}
+function pinInput(k) {
+  if (pinLocked) return;
+  if (k === "back") { pinBuffer = pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if (k === "enter") { submitPin(); return; }
+  if (/^\d$/.test(k) && pinBuffer.length < 4) {
+    pinBuffer += k; updatePinDots();
+    if (pinBuffer.length === 4) setTimeout(submitPin, 120);
+  }
+}
+function submitPin() {
+  if (pinBuffer === CORRECT_PIN) {
+    pinAttempts = 0;
+    showScreen("main-screen");
+    showSub("menu-screen");
+    document.getElementById("menu-ci").focus();
+  } else {
+    pinAttempts++;
+    pinBuffer = ""; updatePinDots();
+    if (pinAttempts >= 3) lockPin();
+    else setPinStatus(`Incorrect PIN — ${3-pinAttempts} attempt(s) remaining.`);
+  }
+}
+function lockPin() {
+  pinLocked = true; let sec = 30;
+  setPinStatus("Terminal locked — too many failed attempts.");
+  const bar = document.getElementById("countdown-bar");
+  bar.textContent = `Retry in ${sec} seconds.`;
+  lockTimer = setInterval(() => {
+    sec--; bar.textContent = `Retry in ${sec} seconds.`;
+    if (sec <= 0) { clearInterval(lockTimer); pinLocked = false; pinAttempts = 0; setPinStatus(""); bar.textContent = ""; }
+  }, 1000);
+}
+function setPinStatus(msg) { document.getElementById("pin-status").textContent = msg; }
+document.querySelectorAll(".pin-key").forEach(btn => btn.addEventListener("click", () => pinInput(btn.dataset.k)));
+
+// ── SCREENS ───────────────────────────────────────
+function showScreen(id) {
+  ["pin-screen","main-screen"].forEach(s =>
+    document.getElementById(s).classList.toggle("active", s === id));
+}
+function showSub(id) {
+  ["menu-screen","form-screen"].forEach(s => {
+    const el = document.getElementById(s);
+    if (el) { el.classList.remove("active"); el.style.display = ""; }
+  });
+  const el = document.getElementById(id);
+  if (el) { el.classList.add("active"); el.style.display = "flex"; }
+}
+
+// ── MENU ──────────────────────────────────────────
+const MENU_IDS = ["menu-ci","menu-co","menu-lrt"];
+function selectMenu(idx) {
+  menuIndex = idx;
+  MENU_IDS.forEach((id,i) => document.getElementById(id).classList.toggle("selected", i===idx));
+  document.getElementById(MENU_IDS[idx]).focus();
+}
+document.getElementById("menu-ci").addEventListener("click", () => openForm("CASH IN"));
+document.getElementById("menu-co").addEventListener("click", () => openForm("CASH OUT"));
+document.getElementById("menu-lrt").addEventListener("click", () => openLRT());
+function openForm(mode) {
+  currentMode = mode;
+  const label = mode === "CASH IN" ? "CASH IN" : "CASH OUT";
+  resetForm();
+  document.getElementById("crumb-title").textContent = label;
+  document.getElementById("form-col-title").textContent = label + " — TRANSACTION DETAILS";
+  document.getElementById("new-balance-label").textContent = "New Balance After " + (mode === "CASH IN" ? "Cash In" : "Cash Out");
+  showSub("form-screen");
+  setStatus("Ready", "info");
+  document.getElementById("f-ref").focus();
+}
+
+// ── FORM ──────────────────────────────────────────
+function resetForm() {
+  ["f-ref","f-amount","f-phone","f-access"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-method").selectedIndex = 0;
+  ["f-name","f-code","f-balance","f-newbalance"].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = "";
+    el.disabled = true;
+    el.style.borderLeftColor = "#bbb";
+    el.style.color = "#444";
+    el.style.fontWeight = "";
+  });
+  document.getElementById("bal-edit-hint").textContent = "";
+  accountData = null;
+  stopScanner();
+  setQrStatus("Ready — press [S] or click Scan to open camera", "");
+}
+
+document.getElementById("f-amount").addEventListener("input", function() {
+  let raw = this.value.replace(/[^\d.]/g,"");
+  const parts = raw.split(".");
+  const intP = parts[0].replace(/,/g,"");
+  const decP = parts.length > 1 ? "." + parts[1].slice(0,2) : "";
+  this.value = (intP ? Number(intP).toLocaleString("en-PH") : "") + (raw.includes(".") ? decP||"." : "");
+  updateNewBalance();
+});
+
+document.getElementById("f-balance").addEventListener("input", function() {
+  // Strip non-numeric except dot
+  let raw = this.value.replace(/[^\d.]/g,"");
+  const parts = raw.split(".");
+  if (parts.length > 2) raw = parts[0] + "." + parts.slice(1).join("");
+  this.value = raw;
+  updateNewBalance();
+});
+// f-name is hidden input, no listeners needed
+document.getElementById("f-balance").addEventListener("blur", function() {
+  if (accountData) saveAccountChanges();
+});
+
+async function saveAccountChanges() {
+  const name = document.getElementById("f-name").value.trim();
+  const bal  = parseFloat(document.getElementById("f-balance").value) || 0;
+  const code = document.getElementById("f-code").value.trim() || accountData.code;
+  if (!code || code === "—") return;
+  setStatus("Saving account changes...", "info");
+  try {
+    const data = await apiCall({ action: "updateAccount", qrValue: code, name, balance: bal });
+    if (data.success) {
+      accountData.name = name;
+      accountData.balance = bal;
+      updateNewBalance();
+      setStatus("Account updated in Google Sheet ✓", "ok");
+    } else {
+      setStatus("Save failed: " + (data.error || "Unknown"), "err");
+    }
+  } catch(e) {
+    setStatus("Save error: " + e.message, "err");
+  }
+}
+
+document.getElementById("f-phone").addEventListener("input", function() {
+  let r = this.value.replace(/\D/g,"").slice(0,11);
+  if (r.length > 7) r = r.slice(0,4)+"-"+r.slice(4,7)+"-"+r.slice(7);
+  else if (r.length > 4) r = r.slice(0,4)+"-"+r.slice(4);
+  this.value = r;
+});
+
+function updateNewBalance() {
+  if (!accountData) return;
+  const amt = getAmountValue();
+  // Read from the (possibly manually edited) balance input
+  const cur = parseFloat(document.getElementById("f-balance").value) || 0;
+  // Keep accountData.balance in sync
+  accountData.balance = cur;
+  const el = document.getElementById("f-newbalance");
+  if (currentMode === "CASH IN") {
+    el.value = (cur + amt).toFixed(2);
+    el.style.borderLeftColor = "#2a7a2a";
+    el.style.color = "#2a7a2a";
+  } else {
+    const nb = cur - amt;
+    if (nb < 0) {
+      el.value = "Insufficient Balance";
+      el.style.borderLeftColor = "#c00";
+      el.style.color = "#c00";
+    } else {
+      el.value = nb.toFixed(2);
+      el.style.borderLeftColor = "#2a7a2a";
+      el.style.color = "#2a7a2a";
+    }
+  }
+}
+
+function goBack() { stopScanner(); showSub("menu-screen"); document.getElementById(MENU_IDS[menuIndex]).focus(); }
+document.getElementById("btn-back-menu").addEventListener("click", goBack);
+document.getElementById("btn-crumb-back").addEventListener("click", goBack);
+document.getElementById("btn-confirm").addEventListener("click", openModal);
+
+// ── QR SCANNER ────────────────────────────────────
+document.getElementById("btn-scan").addEventListener("click", startScanner);
+document.getElementById("btn-stop-scan").addEventListener("click", () => { stopScanner(); setQrStatus("Scan cancelled.", ""); });
+
+function setQrStatus(msg, cls) {
+  const el = document.getElementById("qr-status");
+  el.textContent = msg;
+  el.className = cls;
+}
+function startScanner() {
+  if (isScanning) return;
+  // Clean up any leftover instance first
+  if (qrScanner) { try { qrScanner.clear(); } catch(e){} qrScanner = null; }
+  isScanning = true;
+  document.getElementById("btn-scan").style.display = "none";
+  document.getElementById("btn-stop-scan").style.display = "";
+  setQrStatus("Camera active — point at QR code...", "scanning");
+
+  const cfg = { fps: 15, qrbox: { width: 200, height: 200 }, aspectRatio: 1, disableFlip: false };
+  qrScanner = new Html5Qrcode("qr-reader", { verbose: false });
+
+  qrScanner.start({ facingMode: "environment" }, cfg, onQRDetected, () => {})
+    .catch(() => {
+      qrScanner.start({ facingMode: "user" }, cfg, onQRDetected, () => {})
+        .catch(err => {
+          isScanning = false;
+          try { qrScanner.clear(); } catch(e){}
+          qrScanner = null;
+          document.getElementById("btn-scan").style.display = "";
+          document.getElementById("btn-stop-scan").style.display = "none";
+          setQrStatus("Camera unavailable — HTTPS required (use GitHub Pages)", "error");
+        });
+    });
+}
+function stopScanner() {
+  if (qrScanner) {
+    try {
+      if (isScanning) {
+        qrScanner.stop().catch(()=>{}).finally(() => {
+          try { qrScanner.clear(); } catch(e){}
+          qrScanner = null;
+        });
+      } else {
+        try { qrScanner.clear(); } catch(e){}
+        qrScanner = null;
+      }
+    } catch(e) { qrScanner = null; }
+  }
+  isScanning = false;
+  document.getElementById("btn-scan").style.display = "";
+  document.getElementById("btn-stop-scan").style.display = "none";
+}
+function onQRDetected(value) {
+  beep();
+  // Warm the cache IMMEDIATELY — don't wait for stopScanner()
+  getAccountCached(value).catch(()=>{});
+  stopScanner();
+  setQrStatus("QR detected: " + value + " — fetching account...", "success");
+  fetchAccount(value);
+}
+
+// ── API ───────────────────────────────────────────
+// Google Apps Script CORS-safe pattern:
+// Encode payload as URL ?data=... and use GET.
+// doGet() on the Apps Script side handles all actions.
+// This avoids preflight entirely and redirect body-drop issues.
+// ── Account cache — avoids repeat round-trips for same QR ────────
+const _acctCache = new Map(); // qrValue → {name, balance, code, ts}
+const CACHE_TTL  = 60_000;    // 60s — re-fetch after this
+
+async function apiCall(payload) {
+  const url = APPS_SCRIPT_URL + "?data=" + encodeURIComponent(JSON.stringify(payload));
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 12000); // 12s hard timeout
+  try {
+    const r = await fetch(url, { method: "GET", redirect: "follow", signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const text = await r.text();
+    if (!text) throw new Error("Empty response — check Apps Script deployment");
+    try { return JSON.parse(text); }
+    catch(err) { throw new Error("Response: " + text.slice(0, 200)); }
+  } catch(e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
+// ── Cached account fetch — instant if seen recently ──────────────
+async function getAccountCached(qrValue) {
+  const cached = _acctCache.get(qrValue);
+  if (cached && (Date.now() - cached.ts) < CACHE_TTL) return cached;
+  const data = await apiCall({ action: "getAccount", qrValue });
+  if (data.success) {
+    const entry = { name: data.name, balance: parseFloat(data.balance)||0, code: data.qrValue||qrValue, ts: Date.now() };
+    _acctCache.set(qrValue, entry);
+    return entry;
+  }
+  return null;
+}
+
+// ── Invalidate cache after a write (cashIn/cashOut) ──────────────
+function invalidateCache(qrValue) { _acctCache.delete(qrValue); }
+async function fetchAccount(qrValue) {
+  setStatus("Fetching account...", "info");
+  const t0 = Date.now();
+  try {
+    const data = await getAccountCached(qrValue);
+    if (data) {
+      accountData = { name: data.name, balance: data.balance, code: data.code };
+      const codeEl = document.getElementById("f-code");
+      const balEl  = document.getElementById("f-balance");
+      document.getElementById("f-name").value = data.name || "UNASSIGNED";
+      codeEl.value = data.code;
+      codeEl.disabled = false;
+      codeEl.style.borderLeftColor = "#111";
+      codeEl.style.color = "#111";
+      balEl.value = data.balance.toFixed(2);
+      balEl.disabled = false;
+      balEl.style.borderLeftColor = "#2a7a2a";
+      balEl.style.color = "#2a7a2a";
+      balEl.style.fontWeight = "bold";
+      document.getElementById("bal-edit-hint").textContent = "— EDITABLE";
+      updateNewBalance();
+      const ms = Date.now() - t0;
+      setQrStatus("Account loaded: " + data.name, "success");
+      setStatus(`Account found: ${data.name} — ${ms < 50 ? "⚡ instant (cached)" : ms + "ms"}`, "ok");
+      document.getElementById("f-amount").focus();
+    } else {
+      setStatus("Account not found: " + qrValue, "err");
+      setQrStatus("Account not found for: " + qrValue, "error");
+    }
+  } catch(e) {
+    setStatus("Error: " + e.message, "err");
+    setQrStatus("Error: " + e.message, "error");
+    console.error("fetchAccount error:", e);
+  }
+}
+
+// ── TRANSACTION ID ────────────────────────────────
+function genReceiptNo(type) {
+  const n = new Date(), d = `${n.getFullYear()}${pad(n.getMonth()+1)}${pad(n.getDate())}`;
+  return (type==="CASH IN"?"CI":"CO")+"-"+d+"-"+String(Math.floor(Math.random()*9000)+1000);
+}
+
+// ── MODAL ─────────────────────────────────────────
+function openModal() {
+  if (txInProgress) return;
+  const amt = getAmountValue();
+  const phone = document.getElementById("f-phone").value.trim();
+  if (!accountData) { setStatus("Please scan an account QR code first.", "err"); return; }
+  if (!amt || amt <= 0) { setStatus("Please enter a valid amount.", "err"); document.getElementById("f-amount").focus(); return; }
+  if (!phone) { setStatus("Phone number is required.", "err"); document.getElementById("f-phone").focus(); return; }
+  const curBal = parseFloat(document.getElementById("f-balance").value) || parseFloat(accountData.balance) || 0;
+  if (currentMode==="CASH OUT" && amt > curBal) {
+    setStatus("Insufficient balance — Cash Out blocked.", "err"); return;
+  }
+  const rcptNo = genReceiptNo(currentMode);
+  const now = new Date();
+  // Use the (possibly manually edited) balance input as the source of truth
+  const cur = parseFloat(document.getElementById("f-balance").value) || parseFloat(accountData.balance) || 0;
+  accountData.balance = cur;
+  const newBal = currentMode==="CASH IN" ? cur+amt : cur-amt;
+  pendingTxData = {
+    action: currentMode==="CASH IN"?"cashIn":"cashOut",
+    receiptNo: rcptNo,
+    qrValue: document.getElementById("f-code").value || accountData.code,
+    accountName: document.getElementById("f-name").value || accountData.name,
+    amount: amt, phone, paymentMethod: document.getElementById("f-method").value,
+    accessCode: document.getElementById("f-access").value,
+    ref: document.getElementById("f-ref").value,
+    balanceBefore: cur, balanceAfter: newBal,
+    timestamp: formatTimestamp(now), mode: currentMode
+  };
+  document.getElementById("modal-title").textContent = "CONFIRM " + currentMode + " TRANSACTION";
+  document.getElementById("modal-body").innerHTML = `
+    <div class="modal-section-label">TRANSACTION</div>
+    <div class="modal-row"><span class="ml">Receipt No.</span><span class="mr">${rcptNo}</span></div>
+    <div class="modal-row"><span class="ml">Type</span><span class="mr">${currentMode}</span></div>
+    <div class="modal-row"><span class="ml">Date &amp; Time</span><span class="mr">${formatTimestamp(now)}</span></div>
+    <div class="modal-section-label">ACCOUNT</div>
+    <div class="modal-row"><span class="ml">Name</span><span class="mr">${accountData.name}</span></div>
+    <div class="modal-row"><span class="ml">Code</span><span class="mr">${accountData.code}</span></div>
+    <div class="modal-row"><span class="ml">Phone</span><span class="mr">${phone}</span></div>
+    <div class="modal-row"><span class="ml">Payment</span><span class="mr">${document.getElementById("f-method").value}</span></div>
+    <div class="modal-section-label">BALANCE</div>
+    <div class="modal-row"><span class="ml">Current Balance</span><span class="mr">${fmtCurrency(cur)}</span></div>
+    <div class="modal-row"><span class="ml">${currentMode} Amount</span><span class="mr">${fmtCurrency(amt)}</span></div>
+    <div class="modal-row hl"><span class="ml">New Balance</span><span class="mr">${fmtCurrency(newBal)}</span></div>
+  `;
+  document.getElementById("modal-overlay").classList.add("active");
+  document.getElementById("modal-confirm").focus();
+}
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  document.getElementById("modal-overlay").classList.remove("active");
+  pendingTxData = null;
+});
+// modal confirm is handled in the LRT section below (routes between LRT and normal TX)
+async function confirmTx() {
+  if (!pendingTxData||txInProgress) return;
+  txInProgress = true;
+  document.getElementById("modal-overlay").classList.remove("active");
+  setStatus("Processing transaction — please wait...", "info");
+  try {
+    const data = await apiCall(pendingTxData);
+    if (data.success) {
+      invalidateCache(pendingTxData.qrValue); // force fresh balance on next fetch
+      setStatus("Transaction successful.", "ok");
+      showReceipt(pendingTxData, data.newBalance);
+    } else { setStatus("Transaction failed: "+(data.error||"Unknown error"), "err"); }
+  } catch(e) { setStatus("Connection error: "+e.message, "err"); }
+  txInProgress = false; pendingTxData = null;
+}
+
+// ── RECEIPT ───────────────────────────────────────
+function showReceipt(tx, confirmedBalance) {
+  const nb = confirmedBalance !== undefined ? confirmedBalance : tx.balanceAfter;
+  document.getElementById("receipt-paper").innerHTML = `
+    <div class="receipt-logo">
+      <div class="receipt-logo-title">CASH MANAGEMENT SYSTEM</div>
+      <div class="receipt-logo-sub">Official Receipt &nbsp;·&nbsp; v1.0</div>
+    </div>
+    <hr class="receipt-sep-solid">
+    <div class="receipt-row"><span class="rl">Transaction Type</span><span class="rr">${tx.mode}</span></div>
+    <div class="receipt-row"><span class="rl">Receipt No.</span><span class="rr">${tx.receiptNo}</span></div>
+    <div class="receipt-row"><span class="rl">Date &amp; Time</span><span class="rr">${tx.timestamp}</span></div>
+    <hr class="receipt-sep">
+    <div class="receipt-row"><span class="rl">Account Name</span><span class="rr">${tx.accountName}</span></div>
+    <div class="receipt-row"><span class="rl">Account Code</span><span class="rr">${tx.qrValue}</span></div>
+    <div class="receipt-row"><span class="rl">Ref. Number</span><span class="rr">${tx.ref||"—"}</span></div>
+    <div class="receipt-row"><span class="rl">Phone Number</span><span class="rr">${tx.phone}</span></div>
+    <div class="receipt-row"><span class="rl">Payment Method</span><span class="rr">${tx.paymentMethod}</span></div>
+    <hr class="receipt-sep">
+    <div class="receipt-amount-block">
+      <div class="receipt-amt-row"><span>Previous Balance</span><span>${fmtCurrency(tx.balanceBefore)}</span></div>
+      <div class="receipt-amt-row"><span>${tx.mode} Amount</span><span>${fmtCurrency(tx.amount)}</span></div>
+      <div class="receipt-amt-row total"><span>New Balance</span><span>${fmtCurrency(nb)}</span></div>
+    </div>
+    <hr class="receipt-sep">
+    <div class="receipt-row"><span class="rl">Processed By</span><span class="rr">Cashier Terminal</span></div>
+    <div class="receipt-row"><span class="rl">System</span><span class="rr">CMS v1.0</span></div>
+    <hr class="receipt-sep-solid">
+    <div class="receipt-footer-text">*** Official Receipt — Keep for your records ***</div>
+  `;
+  document.getElementById("receipt-overlay").classList.add("active");
+}
+document.getElementById("btn-print-receipt").addEventListener("click", () => window.print());
+document.getElementById("btn-close-receipt").addEventListener("click", () => {
+  document.getElementById("receipt-overlay").classList.remove("active");
+  resetForm(); showSub("menu-screen");
+  document.getElementById(MENU_IDS[menuIndex]).focus();
+});
+
+// ── STATUS ────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById("status-msg");
+  const dot = document.getElementById("status-dot");
+  el.textContent = msg; el.className = type;
+  dot.className = "status-dot " + type;
+}
+
+// ── KEYBOARD ──────────────────────────────────────
+document.addEventListener("keydown", e => {
+  const pinA  = document.getElementById("pin-screen").classList.contains("active");
+  const mainA = document.getElementById("main-screen").classList.contains("active");
+  const menuA = document.getElementById("menu-screen").classList.contains("active");
+  const formA = document.getElementById("form-screen").classList.contains("active");
+  const modA  = document.getElementById("modal-overlay").classList.contains("active");
+  const rcptA = document.getElementById("receipt-overlay").classList.contains("active");
+
+  if (rcptA) {
+    if (e.key==="Enter"||e.key==="p"||e.key==="P") { e.preventDefault(); window.print(); }
+    if (e.key==="Escape") { e.preventDefault(); document.getElementById("btn-close-receipt").click(); }
+    return;
+  }
+  if (modA) {
+    if (e.key==="Enter")  { e.preventDefault(); confirmTx(); }
+    if (e.key==="Escape") { e.preventDefault(); document.getElementById("modal-cancel").click(); }
+    return;
+  }
+  if (pinA) {
+    if (e.key==="Backspace") { e.preventDefault(); pinInput("back"); return; }
+    if (e.key==="Enter")     { e.preventDefault(); pinInput("enter"); return; }
+    if (/^\d$/.test(e.key))  { pinInput(e.key); return; }
+  }
+  if (mainA && menuA) {
+    if (e.key==="ArrowDown"||e.key==="ArrowRight") { e.preventDefault(); selectMenu(Math.min(menuIndex+1,MENU_IDS.length-1)); }
+    if (e.key==="ArrowUp"  ||e.key==="ArrowLeft")  { e.preventDefault(); selectMenu(Math.max(menuIndex-1,0)); }
+    if (e.key==="Enter") { e.preventDefault(); if(menuIndex===0) openForm("CASH IN"); else if(menuIndex===1) openForm("CASH OUT"); else openLRT(); }
+    if (e.key==="1") openForm("CASH IN");
+    if (e.key==="2") openForm("CASH OUT");
+    if (e.key==="3") openLRT();
+  }
+  if (mainA && formA) {
+    if (e.key==="Escape") { e.preventDefault(); goBack(); }
+    // S key only when NOT typing in a text/password field
+    if ((e.key==="s"||e.key==="S") && !["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)) {
+      e.preventDefault(); startScanner();
+    }
+    if (e.key==="Enter") {
+      const a = document.activeElement;
+      // Enter advances through fields in order; last field or confirm button → open modal
+      const fieldOrder = ["f-ref","f-amount","f-phone","f-method","f-access"];
+      const idx = fieldOrder.indexOf(a.id);
+      if (idx !== -1 && idx < fieldOrder.length - 1) {
+        // Move to next field in order
+        e.preventDefault();
+        document.getElementById(fieldOrder[idx + 1]).focus();
+      } else if (a.id === "f-access") {
+        // Last input field: check if balance is editable, otherwise confirm
+        e.preventDefault();
+        const bal = document.getElementById("f-balance");
+        if (!bal.disabled) { bal.focus(); bal.select(); }
+        else { openModal(); }
+      } else if (a.id === "f-balance" || a.id === "btn-confirm") {
+        e.preventDefault(); openModal();
+      }
+    }
+  }
+});
+document.getElementById("btn-scan").addEventListener("keydown", e => {
+  if (e.key==="Enter"||e.key===" ") { e.preventDefault(); startScanner(); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  LRT-1 TRAIN FARE
+// ══════════════════════════════════════════════════════════════════
+
+// LRT-1 stations in order (north → south), with station codes
+const LRT1_STATIONS = [
+  // Northern section
+  { code:"FPJ",  name:"Fernando Poe Jr.", region:"north" },
+  { code:"BLC",  name:"Balintawak",       region:"north" },
+  { code:"MON",  name:"Monumento",        region:"north" },
+  { code:"5TH",  name:"5th Avenue",       region:"north" },
+  { code:"RPV",  name:"R. Papa",          region:"north" },
+  { code:"ABD",  name:"Abad Santos",      region:"north" },
+  { code:"BLM",  name:"Blumentritt",      region:"north" },
+  { code:"TDO",  name:"Tayuman",          region:"north" },
+  { code:"BBQ",  name:"Bambang",          region:"north" },
+  { code:"DOT",  name:"Doroteo Jose",     region:"north" },
+  { code:"CRY",  name:"Carriedo",         region:"north" },
+  { code:"CNT",  name:"Central Terminal", region:"north" },
+  // Southern section
+  { code:"UPP",  name:"UN Avenue",        region:"south" },
+  { code:"PDE",  name:"Pedro Gil",        region:"south" },
+  { code:"QUI",  name:"Quirino",          region:"south" },
+  { code:"VTA",  name:"Vito Cruz",        region:"south" },
+  { code:"GIL",  name:"Gil Puyat",        region:"south" },
+  { code:"LIB",  name:"Libertad",         region:"south" },
+  { code:"EDG",  name:"EDSA",             region:"south" },
+  { code:"BAC",  name:"Baclaran",         region:"south" },
+];
+
+// Fare matrix: base fare ₱15 + ₱1 per station jump (approx LRT-1 fare structure)
+// Minimum ₱15, max ₱35 for full line
+function computeBaseFare(fromIdx, toIdx) {
+  const stops = Math.abs(toIdx - fromIdx);
+  if (stops === 0) return 0;
+  const base = 15 + (stops * 1.00);
+  return Math.min(Math.round(base * 100) / 100, 35);
+}
+
+let lrtAccountData = null;
+let lrtFromIdx = null;
+let lrtToIdx   = null;
+let lrtDiscPct = 0;
+let lrtDiscType = "REGULAR";
+let lrtQrScanner = null;
+let lrtIsScanning = false;
+let lrtPendingTx = null;
+
+function openLRT() {
+  resetLRT();
+  document.querySelectorAll("#main-screen .screen").forEach(s => { s.classList.remove("active"); s.style.display=""; });
+  document.getElementById("lrt-screen").classList.add("active");
+  document.getElementById("lrt-screen").style.display = "flex";
+  setLrtStatus("Scan account QR, then select stations", "info");
+}
+
+// Default station indices — FROM is permanently EDSA
+const LRT_DEFAULT_FROM = LRT1_STATIONS.findIndex(s => s.code === "EDG"); // EDSA (permanent)
+const LRT_DEFAULT_TO   = LRT1_STATIONS.findIndex(s => s.code === "FPJ"); // Fernando Poe Jr.
+
+function applyDefaultStations() {
+  // FROM is always EDSA — just set the index and route label
+  lrtFromIdx = LRT_DEFAULT_FROM;
+  document.getElementById("lrt-from-val").textContent = LRT1_STATIONS[LRT_DEFAULT_FROM].name;
+  // Select default TO
+  const toBtn = document.querySelector(`.station-btn[data-dir="to"][data-idx="${LRT_DEFAULT_TO}"]`);
+  if (toBtn) selectStation("to", LRT_DEFAULT_TO, toBtn);
+}
+
+function resetLRT() {
+  lrtAccountData = null; lrtFromIdx = null; lrtToIdx = null;
+  lrtDiscPct = 0; lrtDiscType = "REGULAR"; lrtPendingTx = null;
+  ["lrt-f-code","lrt-f-acctname","lrt-f-balance"].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = ""; el.disabled = true;
+    el.style.borderLeftColor = "#bbb"; el.style.color = "#444"; el.style.fontWeight = "";
+  });
+  document.getElementById("lrt-f-name").value = "";
+  document.getElementById("lrt-f-access").value = "";
+  document.getElementById("lrt-fare-val").textContent = "₱ —";
+  document.getElementById("lrt-discount-tag").style.display = "none";
+  document.getElementById("lrt-from-val").textContent = "—";
+  document.getElementById("lrt-to-val").textContent   = "—";
+  document.getElementById("lrt-qr-status").textContent = "Ready — press [S] or click Scan";
+  document.getElementById("lrt-qr-status").className  = "";
+  // Reset discount buttons
+  document.querySelectorAll(".discount-btn").forEach(b => b.classList.toggle("selected", b.dataset.disc === "REGULAR"));
+  // Clear TO station selections then apply defaults
+  document.querySelectorAll(".station-btn[data-dir='to']").forEach(b => b.classList.remove("selected"));
+  applyDefaultStations();
+  stopLrtScanner();
+}
+
+function goBackFromLRT() {
+  stopLrtScanner();
+  document.querySelectorAll("#main-screen .screen").forEach(s => { s.classList.remove("active"); s.style.display=""; });
+  document.getElementById("menu-screen").classList.add("active");
+  document.getElementById("menu-screen").style.display = "flex";
+  document.getElementById(MENU_IDS[menuIndex]).focus();
+}
+
+// Build station grids — only TO northbound is selectable; FROM is locked to EDSA
+function buildStationGrids() {
+  const northStations = LRT1_STATIONS.filter(s => s.region === "north");
+  const grid = document.getElementById("lrt-to-north");
+  if (!grid) return;
+  grid.innerHTML = "";
+  const keyLabels = ["1","2","3","4","5","6","7","8","9","0","Q","-"];
+  northStations.forEach((stn, pos) => {
+    const idx = LRT1_STATIONS.indexOf(stn);
+    const btn = document.createElement("button");
+    btn.className = "station-btn";
+    btn.dataset.idx = idx;
+    btn.dataset.dir = "to";
+    btn.tabIndex = -1; // keyboard shortcuts handle selection — no tab needed
+    const keyHint = keyLabels[pos] ? `<span style="float:right;background:#333;color:#aaa;font-size:8px;padding:1px 4px;border-radius:2px;font-family:monospace;">${keyLabels[pos]}</span>` : "";
+    btn.innerHTML = `<span class="stn-num">${stn.code}</span>${stn.name}${keyHint}`;
+    btn.addEventListener("click", () => selectStation("to", idx, btn));
+    grid.appendChild(btn);
+  });
+}
+
+function selectStation(dir, idx, clickedBtn) {
+  // Deselect all buttons for this direction
+  document.querySelectorAll(`.station-btn[data-dir="${dir}"]`).forEach(b => b.classList.remove("selected"));
+  clickedBtn.classList.add("selected");
+  if (dir === "from") lrtFromIdx = idx;
+  else                lrtToIdx   = idx;
+  // Update route display
+  document.getElementById("lrt-from-val").textContent = lrtFromIdx !== null ? LRT1_STATIONS[lrtFromIdx].name : "—";
+  document.getElementById("lrt-to-val").textContent   = lrtToIdx   !== null ? LRT1_STATIONS[lrtToIdx].name   : "—";
+  updateLrtFare();
+}
+
+function selectDiscount(btn) {
+  document.querySelectorAll(".discount-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  lrtDiscPct  = parseInt(btn.dataset.pct);
+  lrtDiscType = btn.dataset.disc;
+  updateLrtFare();
+}
+
+// Arrow key navigation for discount buttons
+document.getElementById("lrt-discount-row").addEventListener("keydown", e => {
+  const btns = [...document.querySelectorAll(".discount-btn")];
+  const cur  = btns.indexOf(document.activeElement);
+  if (cur === -1) return;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); btns[Math.min(cur+1, btns.length-1)].focus(); }
+  if (e.key === "ArrowLeft"  || e.key === "ArrowUp")   { e.preventDefault(); btns[Math.max(cur-1, 0)].focus(); }
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectDiscount(document.activeElement); }
+});
+
+function updateLrtFare() {
+  if (lrtFromIdx === null || lrtToIdx === null) return;
+  if (lrtFromIdx === lrtToIdx) {
+    document.getElementById("lrt-fare-val").textContent = "Same station";
+    document.getElementById("lrt-discount-tag").style.display = "none";
+    return;
+  }
+  const base = computeBaseFare(lrtFromIdx, lrtToIdx);
+  const discAmt = +(base * lrtDiscPct / 100).toFixed(2);
+  const final   = +(base - discAmt).toFixed(2);
+  document.getElementById("lrt-fare-val").textContent = `₱ ${final.toFixed(2)}`;
+  const tag = document.getElementById("lrt-discount-tag");
+  if (lrtDiscPct > 0) {
+    tag.textContent = `${lrtDiscType} DISCOUNT −₱${discAmt.toFixed(2)} (Base: ₱${base.toFixed(2)})`;
+    tag.style.display = "inline-block";
+  } else {
+    tag.style.display = "none";
+  }
+}
+
+// QR Scanner for LRT
+function startLrtScanner() {
+  if (lrtIsScanning) return;
+  if (lrtQrScanner) { try { lrtQrScanner.clear(); } catch(e){} lrtQrScanner = null; }
+  lrtIsScanning = true;
+  document.getElementById("lrt-btn-scan").style.display = "none";
+  document.getElementById("lrt-btn-stop").style.display = "";
+  setLrtQrStatus("Camera active — scan account QR...", "scanning");
+  const cfg = { fps: 20, qrbox: { width: 200, height: 200 }, aspectRatio: 1,
+    videoConstraints: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } } };
+  lrtQrScanner = new Html5Qrcode("lrt-qr-reader", { verbose: false });
+  lrtQrScanner.start({ facingMode: "environment" }, cfg, onLrtQRDetected, () => {})
+    .catch(() => {
+      lrtQrScanner.start({ facingMode: "user" }, cfg, onLrtQRDetected, () => {})
+        .catch(() => {
+          lrtIsScanning = false;
+          document.getElementById("lrt-btn-scan").style.display = "";
+          document.getElementById("lrt-btn-stop").style.display = "none";
+          setLrtQrStatus("Camera error — needs HTTPS", "error");
+        });
+    });
+}
+function stopLrtScanner() {
+  if (lrtQrScanner) {
+    try {
+      if (lrtIsScanning) lrtQrScanner.stop().catch(()=>{}).finally(() => { try { lrtQrScanner.clear(); } catch(e){} lrtQrScanner = null; });
+      else { try { lrtQrScanner.clear(); } catch(e){} lrtQrScanner = null; }
+    } catch(e) { lrtQrScanner = null; }
+  }
+  lrtIsScanning = false;
+  document.getElementById("lrt-btn-scan").style.display = "";
+  document.getElementById("lrt-btn-stop").style.display = "none";
+}
+async function onLrtQRDetected(qrValue) {
+  beep();
+  // Warm cache immediately — parallel with scanner stop
+  getAccountCached(qrValue).catch(()=>{});
+  stopLrtScanner();
+  const t0 = Date.now();
+  setLrtQrStatus("Fetching account...", "scanning");
+  try {
+    const data = await getAccountCached(qrValue);
+    if (data) {
+      lrtAccountData = { name: data.name, balance: data.balance, code: data.code };
+      document.getElementById("lrt-f-code").value = data.code;
+      document.getElementById("lrt-f-code").disabled = false;
+      document.getElementById("lrt-f-code").style.borderLeftColor = "#111";
+      document.getElementById("lrt-f-code").style.color = "#111";
+      document.getElementById("lrt-f-acctname").value = data.name;
+      document.getElementById("lrt-f-acctname").disabled = false;
+      document.getElementById("lrt-f-acctname").style.borderLeftColor = "#111";
+      document.getElementById("lrt-f-acctname").style.color = "#111";
+      document.getElementById("lrt-f-acctname").style.fontWeight = "bold";
+      document.getElementById("lrt-f-balance").value = data.balance.toFixed(2);
+      document.getElementById("lrt-f-balance").disabled = false;
+      document.getElementById("lrt-f-balance").style.borderLeftColor = "#2a7a2a";
+      document.getElementById("lrt-f-balance").style.color = "#2a7a2a";
+      document.getElementById("lrt-f-balance").style.fontWeight = "bold";
+      document.getElementById("lrt-f-name").value = data.name;
+      const ms = Date.now() - t0;
+      setLrtQrStatus(`✓ ${data.name} — ₱${data.balance.toFixed(2)}${ms < 50 ? " ⚡" : ""}`, "success");
+      setLrtStatus(ms < 50 ? "⚡ Instant (cached) — press Enter to confirm" : `Account loaded (${ms}ms) — press Enter`, "ok");
+    } else {
+      setLrtQrStatus("Account not found: " + qrValue, "error");
+      setLrtStatus("Account not found", "err");
+    }
+  } catch(e) {
+    setLrtQrStatus("Error: " + e.message, "error");
+    setLrtStatus("Error: " + e.message, "err");
+  }
+}
+
+// ── LRT FAST CONFIRM — no modal, no receipt ──────────────────────
+async function confirmLrtDirect() {
+  if (!lrtAccountData) { setLrtStatus("⚠ Scan account QR first.", "err"); return; }
+  if (lrtToIdx === null) { setLrtStatus("⚠ Select destination station.", "err"); return; }
+  if (lrtFromIdx === lrtToIdx) { setLrtStatus("⚠ Same station selected.", "err"); return; }
+  if (txInProgress) return;
+
+  const base    = computeBaseFare(lrtFromIdx, lrtToIdx);
+  const discAmt = +(base * lrtDiscPct / 100).toFixed(2);
+  const fare    = +(base - discAmt).toFixed(2);
+  const curBal  = lrtAccountData.balance;
+
+  if (fare > curBal) { setLrtStatus("⚠ Insufficient balance.", "err"); return; }
+
+  txInProgress = true;
+  const rcptNo = "LRT-" + new Date().toISOString().replace(/\D/g,"").slice(0,14);
+  const now    = new Date();
+  const newBal = +(curBal - fare).toFixed(2);
+
+  setLrtStatus(`⚡ Processing ₱${fare.toFixed(2)} — ${LRT1_STATIONS[lrtToIdx].name}...`, "info");
+
+  try {
+    const data = await apiCall({
+      action: "cashOut", receiptNo: rcptNo,
+      qrValue: lrtAccountData.code, accountName: lrtAccountData.name,
+      amount: fare, phone: "—", paymentMethod: "LRT-1 BEEP CARD",
+      accessCode: document.getElementById("lrt-f-access").value,
+      ref: rcptNo, balanceBefore: curBal, balanceAfter: newBal,
+      timestamp: formatTimestamp(now), mode: "LRT-1 FARE",
+      fromStation: LRT1_STATIONS[lrtFromIdx].name,
+      toStation: LRT1_STATIONS[lrtToIdx].name,
+      discountType: lrtDiscType, discountAmt: discAmt, baseFare: base
+    });
+    if (data.success) {
+      invalidateCache(lrtAccountData.code); // fresh balance on next scan
+      beep();
+      setLrtStatus(`✓ ₱${fare.toFixed(2)} deducted — ${LRT1_STATIONS[lrtToIdx].name} | Bal: ₱${newBal.toFixed(2)}`, "ok");
+      // Update balance in memory for successive scans
+      lrtAccountData.balance = newBal;
+      document.getElementById("lrt-f-balance").value = newBal.toFixed(2);
+      // Auto-reset after 1s — ready for next passenger
+      setTimeout(() => {
+        lrtAccountData = null;
+        ["lrt-f-code","lrt-f-acctname","lrt-f-balance"].forEach(id => {
+          const el = document.getElementById(id);
+          el.value = ""; el.disabled = true;
+          el.style.borderLeftColor = "#bbb"; el.style.color = "#444"; el.style.fontWeight = "";
+        });
+        document.getElementById("lrt-f-access").value = "";
+        document.getElementById("lrt-qr-status").textContent = "Ready — scan next account QR";
+        document.getElementById("lrt-qr-status").className = "";
+        setLrtStatus("Ready — scan next passenger", "info");
+      }, 1000);
+    } else {
+      setLrtStatus("✗ Failed: " + (data.error||"Unknown error"), "err");
+    }
+  } catch(e) {
+    setLrtStatus("✗ Error: " + e.message, "err");
+  }
+  txInProgress = false;
+}
+
+let _lrtModalPending = false; // kept for modal-confirm router compatibility
+document.getElementById("modal-confirm").addEventListener("click", async () => {
+  if (_lrtModalPending) { _lrtModalPending = false; await confirmLrtDirect(); }
+  else await confirmTx();
+});
+
+function setLrtStatus(msg, type) {
+  const el = document.getElementById("lrt-status-msg");
+  const dot = document.getElementById("lrt-status-dot");
+  el.textContent = msg; el.className = type||"";
+  dot.className = "status-dot " + (type||"info");
+}
+function setLrtQrStatus(msg, cls) {
+  const el = document.getElementById("lrt-qr-status");
+  el.textContent = msg; el.className = cls||"";
+}
+
+// Wire LRT buttons
+document.getElementById("lrt-btn-scan").addEventListener("click", startLrtScanner);
+document.getElementById("lrt-btn-stop").addEventListener("click", () => { stopLrtScanner(); setLrtQrStatus("Scan cancelled.", ""); });
+document.getElementById("btn-lrt-back").addEventListener("click", goBackFromLRT);
+document.getElementById("btn-lrt-back2").addEventListener("click", goBackFromLRT);
+document.getElementById("btn-lrt-confirm").addEventListener("click", confirmLrtDirect);
+
+// Remove station + discount buttons from tab order — keyboard shortcuts handle them
+document.querySelectorAll(".station-btn, .discount-btn").forEach(b => b.tabIndex = -1);
+
+// Station number map — northbound only (1=FPJ ... 12=Central)
+const LRT_NORTH = LRT1_STATIONS.filter(s => s.region === "north");
+
+// ── Keyboard support for LRT screen ──────────────────────────────
+document.addEventListener("keydown", e => {
+  const lrtA = document.getElementById("lrt-screen").classList.contains("active");
+  if (!lrtA) return;
+  if (document.getElementById("modal-overlay").classList.contains("active")) return;
+  const inInput = ["INPUT","TEXTAREA"].includes(document.activeElement.tagName);
+
+  if (e.key === "Escape") { e.preventDefault(); goBackFromLRT(); return; }
+
+  if (!inInput) {
+    // S — scan QR
+    if (e.key === "s" || e.key === "S") { e.preventDefault(); startLrtScanner(); return; }
+
+    // 1-9, 0 (=10), q(=11), w(=12) — select northbound destination by number
+    const numMap = { "1":0,"2":1,"3":2,"4":3,"5":4,"6":5,"7":6,"8":7,"9":8,"0":9,"q":10,"Q":10,"-":11 };
+    if (numMap[e.key] !== undefined) {
+      const stn = LRT_NORTH[numMap[e.key]];
+      if (stn) {
+        e.preventDefault();
+        const idx = LRT1_STATIONS.indexOf(stn);
+        const btn = document.querySelector(`.station-btn[data-dir="to"][data-idx="${idx}"]`);
+        if (btn) selectStation("to", idx, btn);
+        setLrtStatus(`📍 Destination: ${stn.name}`, "ok");
+      }
+      return;
+    }
+
+    // Discount shortcuts: R=Regular, T=Student, P=PWD, N=Senior
+    const discMap = { r:"REGULAR", R:"REGULAR", t:"STUDENT", T:"STUDENT", p:"PWD", P:"PWD", n:"SENIOR", N:"SENIOR" };
+    if (discMap[e.key]) {
+      e.preventDefault();
+      const disc = discMap[e.key];
+      const btn = document.querySelector(`.discount-btn[data-disc="${disc}"]`);
+      if (btn) selectDiscount(btn);
+      setLrtStatus(`🏷 Discount: ${disc}`, "ok");
+      return;
+    }
+
+    // Enter — confirm
+    if (e.key === "Enter") { e.preventDefault(); confirmLrtDirect(); return; }
+  } else {
+    // In access code input — Enter still confirms
+    if (e.key === "Enter") { e.preventDefault(); confirmLrtDirect(); }
+  }
+});
+
+// Build station grids + strip tab order from clickable-only buttons
+buildStationGrids();
+document.querySelectorAll(".station-btn, .discount-btn").forEach(b => b.tabIndex = -1);
+
+// ══════════════════════════════════════════════════════════════════
+//  PHONE SCANNER — remote scan mode
+//  Phone opens same URL, scans QR → writes to Session sheet via
+//  Apps Script → desktop polls every 1s → auto-fetches account
+// ══════════════════════════════════════════════════════════════════
+let psScanner = null, psScanning = false, psLastScan = "", psPolling = null;
+
+// ── Detect if this is a phone/mobile device ──────────────────────
+function isMobileDevice() {
+  // Strict check — exclude Mac desktop even if UA has "Mobile" substring
+  const ua = navigator.userAgent;
+  const isPhone = /Android.*Mobile|iPhone|iPod/.test(ua);
+  const isTablet = /iPad|Android(?!.*Mobile)/.test(ua);
+  return isPhone || isTablet;
+}
+
+// ── Show phone scanner screen ─────────────────────────────────────
+function openPhoneScanner() {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("phone-scanner-screen").classList.add("active");
+  initMQTT(null); // connect for publishing only (no subscription handler)
+  startPhoneScanner();
+}
+
+// showSub is already defined earlier in the file — removed duplicate
+
+function setPsStatus(msg, type) {
+  const el = document.getElementById("ps-status");
+  el.textContent = msg; el.className = "ps-status " + type;
+}
+
+// ── Resolution presets — lower res = wider field of view = easier to scan up close ──
+const PS_RES_PRESETS = [
+  { label: "320×240 (widest)",  w: 320,  h: 240  },
+  { label: "480×360",           w: 480,  h: 360  },
+  { label: "640×480 (default)", w: 640,  h: 480  },
+  { label: "1280×720",          w: 1280, h: 720  },
+];
+let psResIndex = 0; // start at lowest (widest view)
+let psFacingMode = "environment"; // "environment" = back cam, "user" = front cam
+
+function startPhoneScanner() {
+  if (psScanning) return;
+  if (psScanner) { try { psScanner.clear(); } catch(e){} psScanner = null; }
+  document.getElementById("ps-account-card").classList.remove("visible");
+  document.getElementById("ps-sent-badge").style.display = "none";
+  psScanning = true;
+  setPsStatus("Starting camera...", "scanning");
+  updateCamIcon();
+
+  const res = PS_RES_PRESETS[psResIndex];
+  const boxSize = Math.min(res.w, res.h) - 40;
+  const cfg = {
+    fps: 20,
+    qrbox: { width: boxSize, height: boxSize },
+    videoConstraints: {
+      facingMode: psFacingMode,
+      width:  { ideal: res.w },
+      height: { ideal: res.h }
+    }
+  };
+
+  psScanner = new Html5Qrcode("ps-qr-reader", { verbose: false });
+  psScanner.start({ facingMode: psFacingMode }, cfg, onPhoneQRDetected, () => {})
+    .then(() => updateResLabel())
+    .catch(() => {
+      // If chosen cam fails, flip and try opposite
+      psFacingMode = psFacingMode === "environment" ? "user" : "environment";
+      cfg.videoConstraints.facingMode = psFacingMode;
+      updateCamIcon();
+      psScanner.start({ facingMode: psFacingMode }, cfg, onPhoneQRDetected, () => {})
+        .then(() => updateResLabel())
+        .catch(() => { psScanning = false; setPsStatus("Camera error — needs HTTPS", "error"); });
+    });
+}
+
+function updateCamIcon() {
+  const btn = document.getElementById("ps-btn-flip");
+  if (btn) btn.textContent = psFacingMode === "environment" ? "🔄 Front" : "🔄 Back";
+}
+
+// ── Flip camera ───────────────────────────────────────────────────
+function flipCamera() {
+  psFacingMode = psFacingMode === "environment" ? "user" : "environment";
+  psScanning = false;
+  psLastScan = "";
+  if (psScanner) {
+    psScanner.stop().catch(()=>{}).finally(() => {
+      try { psScanner.clear(); } catch(e){} psScanner = null;
+      startPhoneScanner();
+    });
+  } else {
+    startPhoneScanner();
+  }
+}
+
+function updateResLabel() {
+  const res = PS_RES_PRESETS[psResIndex];
+  const el = document.getElementById("ps-zoom-val");
+  if (el) el.textContent = res.label;
+}
+
+// ── Restart scanner with new resolution ──────────────────────────
+function changeResolution(idx) {
+  psResIndex = idx;
+  psScanning = false;
+  if (psScanner) {
+    psScanner.stop().catch(()=>{}).finally(() => {
+      try { psScanner.clear(); } catch(e){} psScanner = null;
+      psLastScan = "";
+      startPhoneScanner();
+    });
+  } else {
+    startPhoneScanner();
+  }
+}
+
+// ── Slider maps to resolution presets ────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  const slider = document.getElementById("ps-zoom-slider");
+  if (!slider) return;
+  slider.min   = 0;
+  slider.max   = PS_RES_PRESETS.length - 1;
+  slider.value = psResIndex;
+  slider.step  = 1;
+  updateResLabel();
+  slider.addEventListener("change", () => {
+    changeResolution(parseInt(slider.value));
+  });
+});
+
+function stopPhoneScanner() {
+  if (psScanner) {
+    try {
+      if (psScanning) {
+        psScanner.stop().catch(()=>{}).finally(() => {
+          try { psScanner.clear(); } catch(e){} psScanner = null;
+        });
+      } else { try { psScanner.clear(); } catch(e){} psScanner = null; }
+    } catch(e) { psScanner = null; }
+  }
+  psScanning = false;
+}
+
+async function onPhoneQRDetected(qrValue) {
+  if (qrValue === psLastScan) return;
+  psLastScan = qrValue;
+  beep();
+  setPsStatus("⚡ Sending to desktop...", "scanning");
+
+  // Don't stop scanner — keep it running for next scan
+  // Just publish + show badge — no account fetch needed (desktop handles that)
+  publishQRScan(qrValue).catch(()=>{});
+
+  document.getElementById("ps-sent-badge").style.display = "inline-block";
+  setPsStatus("✓ Sent!", "success");
+
+  // Reset & ready for next scan in 800ms
+  setTimeout(() => {
+    psLastScan = "";
+    document.getElementById("ps-account-card").classList.remove("visible");
+    document.getElementById("ps-sent-badge").style.display = "none";
+    setPsStatus("Ready — scan next QR", "scanning");
+  }, 800);
+}
+
+// ── Desktop polling — checks Session sheet every 1.2s ────────────
+function startDesktopPolling() {
+  if (psPolling) return;
+  psPolling = setInterval(async () => {
+    // Poll any time main screen is active (menu or form)
+    const mainActive = document.getElementById("main-screen").classList.contains("active");
+    if (!mainActive) return;
+    try {
+      const data = await apiCall({ action: "getSession", deviceId: getDeviceId() });
+      if (data && data.success && data.qrValue) {
+        const lrtActive  = document.getElementById("lrt-screen").classList.contains("active");
+        const formActive = document.getElementById("form-screen").classList.contains("active");
+        beep();
+        if (lrtActive) {
+          onLrtQRDetected(data.qrValue);
+          setLrtStatus("📱 QR scanned from phone: " + data.qrValue, "ok");
+        } else {
+          if (!formActive) openForm("CASH IN");
+          fetchAccount(data.qrValue);
+          setStatus("📱 QR scanned from phone: " + data.qrValue, "ok");
+        }
+      }
+    } catch(e) { /* silent polling */ }
+  }, 1200);
+}
+
+function stopDesktopPolling() {
+  if (psPolling) { clearInterval(psPolling); psPolling = null; }
+}
+
+// ── Shared session key — phone writes, desktop reads same slot ────
+// All tabs/devices use the same "CASHIER-1" key so they sync automatically
+function getDeviceId() {
+  return "CASHIER-1";
+}
+
+// Mobile auto-detect removed — phone scanner opened manually via button
+
+// ── Button handlers ───────────────────────────────────────────────
+document.getElementById("ps-btn-exit").addEventListener("click", () => {
+  stopPhoneScanner();
+  psLastScan = "";
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("pin-screen").classList.add("active");
+});
+document.getElementById("ps-btn-scan-again").addEventListener("click", () => {
+  psLastScan = "";
+  startPhoneScanner();
+});
+
+// ── P key on menu to open phone scanner mode (for testing on desktop) ─
+document.addEventListener("keydown", e => {
+  const menuA = document.getElementById("menu-screen").classList.contains("active");
+  if (menuA && (e.key === "p" || e.key === "P")) {
+    e.preventDefault(); openPhoneScanner();
+  }
+});
+
+// Start desktop polling when form opens
+document.getElementById("btn-back-menu").addEventListener("click", stopDesktopPolling, { capture: true });
+const _origOpenForm = window.openForm;
+
+// Start real-time listener as soon as main-screen activates (after PIN login)
+let _ablyStarted = false;
+const _mainObserver = new MutationObserver(() => {
+  const mainActive = document.getElementById("main-screen").classList.contains("active");
+  if (mainActive && !_ablyStarted) {
+    _ablyStarted = true;
+    startAblySubscriber(); // tries Ably first, falls back to polling
+  }
+});
+_mainObserver.observe(document.getElementById("main-screen"), { attributes: true, attributeFilter: ["class"] });
+
+</script>
+</body>
+</html>
